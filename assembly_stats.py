@@ -14,22 +14,25 @@ Versions:
   2.0 - April 13, 2021 - Refactor to compare multiple input assemblies
           - Break several things into functions
           - Improve stats calculation efficiency
+          - Add histogram plotting
 
 """
 __version__ = '2.0'
 
+from pandas.io.formats.format import GenericArrayFormatter
 from Bio import SeqIO
 import sys
 import statistics
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import argparse
 import os
 
 parser = argparse.ArgumentParser(description='Genome assembly stats script.')
 parser.add_argument('-i', '--infile', required=True, nargs='+',
                     help='Input genome assembly file(s) (fasta format). Add multiple assemblies for comparison among them: e.g. -i method1.fa method2.fa method3.fa')
-parser.add_argument('-o','--outfile', help='Output filename')
+parser.add_argument('-o','--outprefix', help='Output file prefix')
 parser.add_argument('-s', '--size', required=True, type=float,
                     help='Genome size estimate in MBp')
 parser.add_argument('-n', '--num_longest', default = 10, type=int,
@@ -149,7 +152,7 @@ def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
   OUT.write('Shortest scaffold:')
   for genome in genome_stats:
     OUT.write(',')
-    OUT.write(str(max(genome_stats[genome]['len_seq'])))
+    OUT.write(str(min(genome_stats[genome]['len_seq'])))
   OUT.write('\n\n')
 
   OUT.write('--------------------------------------------------------------------\n')
@@ -330,6 +333,15 @@ def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
 
   OUT.close()
 
+def plot_scaffold_dist(genome_stats, outputfile):
+
+  # Put all scaffold_lengths into a single dataframe
+  lengths = pd.DataFrame()
+  for genome in genome_stats:
+    lengths[genome] = genome_stats[genome]['seq_greater_1k']
+
+  lengths.hist(bins=50, figsize=(8,10))
+  plt.savefig(outputfile)
 
 def main():
 
@@ -355,8 +367,12 @@ def main():
     genomes_dict[genome_name] = get_genome_stats(genome, args.size)
 
   print(f"Done getting stats for {len(args.infile)} genomes. \nSummarizing data.")
+  
+  out_fasta = args.outprefix + '.csv'
+  write_output_stats(genomes_dict, args.size, args.num_longest, out_fasta)
 
-  write_output_stats(genomes_dict, args.size, args.num_longest, args.outfile)
+  out_plots = args.outprefix + '.pdf'
+  plot_scaffold_dist(genomes_dict, out_plots)
 
 
 
