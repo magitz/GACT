@@ -6,7 +6,7 @@
 
 I am working on several genome assembly projects and was lacking a good way to compare the output of different assemblers or different parameter sets.
 
-In searching for solutions, I found the [GenomeQC](https://github.com/HuffordLab/GenomeQC) tool and its assembly_stats.py script. This seemed like a good place to start, so I have built on that.
+In searching for solutions, I found the [GenomeQC](https://github.com/HuffordLab/GenomeQC)[1] tool and its assembly_stats.py script. This seemed like a good place to start, so I have built on that.
 
 In general, the script takes one or more fasta files, an estimated genome size and computes a number of statistics like numbers and genome coverage of scaffolds of different lengths, N50 and more.
 
@@ -82,4 +82,8 @@ LG50
 %N
 
 Longest N scaffolds
+
+## Citation
+
+1. GenomeQC: A quality assessment tool for genome assemblies and gene structure annotations Nancy Manchanda, John L. Portwood II, Margaret R. Woodhouse, Arun S. Seetharam, Carolyn J. Lawrence-Dill, Carson M. Andorf, Matthew B. Hufford https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-020-6568-2
 
