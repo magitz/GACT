@@ -1,4 +1,4 @@
-# GACT: The <b>G</b>enome <b>A</b>ssembly <b>C</b>omparison <b>T</b>oolkit
+# GACT: The Genome Assembly Comparison Toolkit
 
 > Matt Gitzendanner
 >
@@ -73,7 +73,6 @@ L50
 NG50
 
 LG50
-
 
 %AT
 
