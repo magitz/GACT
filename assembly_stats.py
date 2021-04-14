@@ -321,7 +321,7 @@ def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
   OUT.write('--------------------------------------------------------------------\n')
   OUT.write('\n')
   # Print longest n scaffold lengths
-  OUT.write(f'Logest {num_longest} scaffolds:')
+  OUT.write(f'Longest {num_longest} scaffolds:')
   OUT.write(f'')
   for genome in genome_stats:
     OUT.write(',')
