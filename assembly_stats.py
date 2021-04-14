@@ -335,12 +335,14 @@ def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
 
 def plot_scaffold_dist(genome_stats, outputfile):
 
-  # Put all scaffold_lengths into a single dataframe
-  lengths = pd.DataFrame()
   for genome in genome_stats:
-    lengths[genome] = genome_stats[genome]['seq_greater_1k']
+    plt.hist(genome_stats[genome]['len_seq'], label=genome, bins=30, log=True, alpha=0.5)
 
-  lengths.hist(bins=50, figsize=(8,10))
+  plt.legend()
+
+  plt.xlabel("Scaffold Length", fontsize=16)  
+  plt.ylabel("Log count", fontsize=16)
+
   plt.savefig(outputfile)
 
 def main():
