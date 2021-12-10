@@ -9,15 +9,20 @@ This script calculates many basic length metrics
 
 Edited by Matt Gitzendanner
 Versions: 
-  1.0 - April 6, 2021 - Refactor to write descriptions 
-                        and reduce redundancy
-  2.0 - April 13, 2021 - Refactor to compare multiple input assemblies
+  1.0 - April 6, 2021 
+           - Refactor to write descriptions and reduce redundancy
+  2.0 - April 13, 2021 
+          - Refactor to compare multiple input assemblies
           - Break several things into functions
           - Improve stats calculation efficiency
           - Add histogram plotting
+  2.1 - December 6, 2021 
+          - Add hndling of gzip inputs
+          - Make outprefix required
+          - Fix GC/AT calcs
 
 """
-__version__ = '2.0'
+__version__ = '2.1'
 
 from pandas.io.formats.format import GenericArrayFormatter
 from Bio import SeqIO
@@ -28,11 +33,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 import os
+import gzip
+from mimetypes import guess_type
+from functools import partial
 
 parser = argparse.ArgumentParser(description='Genome assembly stats script.')
 parser.add_argument('-i', '--infile', required=True, nargs='+',
                     help='Input genome assembly file(s) (fasta format). Add multiple assemblies for comparison among them: e.g. -i method1.fa method2.fa method3.fa')
-parser.add_argument('-o','--outprefix', help='Output file prefix')
+parser.add_argument('-o','--outprefix', required=True, help='Output file prefix')
 parser.add_argument('-s', '--size', required=True, type=float,
                     help='Genome size estimate in MBp')
 parser.add_argument('-n', '--num_longest', default = 10, type=int,
@@ -44,11 +52,18 @@ parser.add_argument('-n', '--num_longest', default = 10, type=int,
 def get_genome_stats(infile, genome_size):
   """Calculate the statistics for an input fasta formatted genome file.
 
-  infile should be a fasta formatted file.
-  Returns a dictionary of values for that genome.
+        infile should be a fasta formatted file
+        genome_size should be in MBp
+        Returns a dictionary of values for that genome.
   """
-
-  records = list(SeqIO.parse(infile, "fasta"))
+  
+  # If infile ends in .gz us gzip.open, otherwise use standard open.
+  encoding = guess_type(infile)[1]  # uses file extension
+  _open = partial(gzip.open, mode='rt') if encoding == 'gzip' else open
+  
+  with _open(infile) as f:
+    records = list(SeqIO.parse(f, "fasta"))
+  
   genome_dict={}
   
   genome_dict['number_of_scaffolds'] = len(records)
@@ -98,24 +113,28 @@ def get_genome_stats(infile, genome_size):
         genome_dict['LG50'] = i
         break
 
-  #calculates A,C,G,T,N percentages: No real need for both A&T and G&C? Comment out for now.
-  genome_dict['counterA'] = 0
-  #genome_dict[counterC] = 0
-  genome_dict['counterG'] = 0
-  #genome_dict[counterT] = 0
+  #calculates A,C,G,T,N percentages
+  genome_dict['counterAT'] = 0
+  genome_dict['counterGC'] = 0
+
   genome_dict['counterN'] = 0
   for record in records:
-      genome_dict['counterA'] += record.seq.count('A') 
-      #genome_dict[counterC] += record.seq.count('C') 
-      genome_dict['counterG'] += record.seq.count('G') 
-      #genome_dict[counterT] += record.seq.count('T') 
+      genome_dict['counterAT'] += record.seq.count('A') 
+      genome_dict['counterAT'] += record.seq.count('T')
+      genome_dict['counterGC'] += record.seq.count('G') 
+      genome_dict['counterGC'] += record.seq.count('C') 
       genome_dict['counterN'] += record.seq.count('N') 
 
   return genome_dict
 
 
 def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
-
+  """ Writes the genome stats to output file
+        genome_stats is a dictionary of dictionaries produced by get_genome_stats
+        genome_size should be in MBp
+        num_longest is int of number of longest scaffold lengths to print
+        outputfile is the file to print to
+  """
   OUT = open(outputfile, 'w')
 
   OUT.write('Genome:')
@@ -147,7 +166,6 @@ def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
     OUT.write(',')
     OUT.write(str(max(genome_stats[genome]['len_seq'])))
   OUT.write('\n')
-
 
   OUT.write('Shortest scaffold:')
   for genome in genome_stats:
@@ -302,13 +320,13 @@ def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
   OUT.write('%AT:')
   for genome in genome_stats:
     OUT.write(',')
-    OUT.write(str((genome_stats[genome]['counterA']/genome_stats[genome]['total_size_scaffolds'])*100))
+    OUT.write(str((genome_stats[genome]['counterAT']/genome_stats[genome]['total_size_scaffolds'])*100))
   OUT.write('\n')
 
   OUT.write('%GC:')
   for genome in genome_stats:
     OUT.write(',')
-    OUT.write(str((genome_stats[genome]['counterG']/genome_stats[genome]['total_size_scaffolds'])*100))
+    OUT.write(str((genome_stats[genome]['counterGC']/genome_stats[genome]['total_size_scaffolds'])*100))
   OUT.write('\n')
 
   OUT.write('%N:')
@@ -333,8 +351,12 @@ def write_output_stats(genome_stats, genome_size, num_longest, outputfile):
 
   OUT.close()
 
-def plot_scaffold_dist(genome_stats, outputfile):
 
+def plot_scaffold_dist(genome_stats, outputfile):
+  """Print a histogram of the scaffold length distributions
+      genome_stats is a dictionary of dictionaries produced by get_genome_stats
+      outputfile is the file to print graph to
+  """
   for genome in genome_stats:
     plt.hist(genome_stats[genome]['len_seq'], label=genome, bins=30, log=True, alpha=0.5)
 
@@ -344,6 +366,7 @@ def plot_scaffold_dist(genome_stats, outputfile):
   plt.ylabel("Log count", fontsize=16)
 
   plt.savefig(outputfile)
+
 
 def main():
 
@@ -367,6 +390,7 @@ def main():
 
     print(f"Getting statistics for {genome_name}.")
     genomes_dict[genome_name] = get_genome_stats(genome, args.size)
+    print(f"Found {(genomes_dict[genome_name]['number_of_scaffolds']):,} contigs for {genome_name}.")
 
   print(f"Done getting stats for {len(args.infile)} genomes. \nSummarizing data.")
   
